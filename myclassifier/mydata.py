@@ -52,15 +52,28 @@ class TextClassificationReader(DatasetReader):
     def _read(self, file_path):
         with open(cached_path(file_path), "r") as data_file:
             for line in self.shard_iterable(data_file.readlines()):
-                if not line or len(line.strip().split('\t')) != 2:
+                # SST-5和其它数据集的格式不一样
+                
+                # SST-5 使用以下代码
+                if not line and len(len) < 3:
                     continue
-                text, sentiment = line.strip().split("\t")
+                line = line.strip()
+                text, label = line[2:], line[0]
+                # print(f"text: {text}")
+                # print(f"label: {label}")
+                
+                # CR, MPQA, MR, SST-2, SUBJ 使用以下代码
+                # if len(line.strip().split('\t')) != 2:
+                #     continue
+                # text, label = line.strip().split("\t")
+                
                 tokens = self._tokenizer.tokenize(text)
                 if self._max_sequence_length:
                     tokens = tokens[: self._max_sequence_length]
                 text_field = TextField(tokens, self._token_indexers)
-                label_field = LabelField(sentiment)
+                label_field = LabelField(label)
                 yield Instance({"tokens": text_field, "label": label_field})
+                
     def _truncate(self, tokens):
         """
         truncate a set of tokens using the provided sequence length

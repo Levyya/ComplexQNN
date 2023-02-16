@@ -13,7 +13,7 @@ from allennlp.modules.seq2vec_encoders import Seq2VecEncoder, PytorchSeq2VecWrap
 from allennlp.modules.text_field_embedders import TextFieldEmbedder, BasicTextFieldEmbedder
 from allennlp.modules.token_embedders import Embedding
 from allennlp.nn.util import get_text_field_mask
-from allennlp.training.metrics import CategoricalAccuracy, F1Measure
+from allennlp.training.metrics import CategoricalAccuracy, F1Measure, FBetaMultiLabelMeasure, FBetaMeasure, BooleanAccuracy
 from allennlp.training import GradientDescentTrainer
 # from allennlp_models.classification.dataset_readers.stanford_sentiment_tree_bank import \
 #     StanfordSentimentTreeBankDatasetReader
@@ -76,6 +76,7 @@ class TextClassifier(Model):
                  embedder: TextFieldEmbedder,
                  encoder: Seq2VecEncoder,
                  vocab: Vocabulary,
+                 num_classes: int = 2,
                  positive_label: str = '1') -> None:
         super().__init__(vocab)
         # We need the embeddings to convert word IDs to their vector representations
@@ -87,12 +88,18 @@ class TextClassifier(Model):
         # After converting a sequence of vectors to a single vector, we feed it into
         # a fully-connected linear layer to reduce the dimension to the total number of labels.
         self.linear = torch.nn.Linear(in_features=encoder.get_output_dim(),
-                                      out_features=vocab.get_vocab_size('label'))
+                                      out_features=num_classes)
+        # print(vocab.get_vocab_size('label'))
+        # print("\n\n\n\n")
 
         # Monitor the metrics - we use accuracy, as well as prec, rec, f1 for 4 (very positive)
         positive_index = vocab.get_token_index(positive_label, namespace='label')
         self.accuracy = CategoricalAccuracy()
+        self.bool_acc = BooleanAccuracy()
         self.f1_measure = F1Measure(positive_index)
+        # self.entropy = Entropy()
+        self.f1_multi = FBetaMultiLabelMeasure(average='micro')
+        self.f1_beta = FBetaMeasure(average='micro')
 
         # We use the cross entropy loss because this is a classification task.
         # Note that PyTorch's CrossEntropyLoss combines softmax and log likelihood loss,
@@ -124,16 +131,42 @@ class TextClassifier(Model):
         # In AllenNLP, the output of forward() is a dictionary.
         # Your output dictionary must contain a "loss" key for your model to be trained.
         output = {"logits": logits, "cls_emb": encoder_out, "probs": probs}
+        # print(logits.shape)
+        # print(logits)
+        preds = torch.argmax(logits, dim=-1)
+        # print(preds.shape)
+        # print(preds)
+        # print(preds.shape)
+        # print(preds)
+        # print(label)
+        # print(label.shape)
         if label is not None:
-            self.accuracy(logits, label)
-            self.f1_measure(logits, label)
+            # self.accuracy(logits, label)
+            # self.f1_measure(logits, label)
+            self.bool_acc(preds, label)
+            try:
+                # self.bool_acc(preds, label)
+                self.f1_multi(preds, label)
+            except:
+                print(preds)
+                print(label)
+                # self.f1_multi(preds, label)
+                
+            # self.f1_beta(logits, label)
             output["loss"] = self.loss_function(logits, label)
 
         return output
 
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
-        return {'accuracy': self.accuracy.get_metric(reset),
-                **self.f1_measure.get_metric(reset)}
+        # print(type(self.f1_beta.get_metric(reset)))
+        # return {**self.f1_beta.get_metric(reset)}
+        return {
+                # 'accuracy': self.accuracy.get_metric(reset),
+                # **self.f1_measure.get_metric(reset)
+                'bool_accuracy': self.bool_acc.get_metric(reset),
+                **self.f1_multi.get_metric(reset)
+                # **self.f1_beta.get_metric(reset)
+               }
 
 # def main():
 #     reader = StanfordSentimentTreeBankDatasetReader()
