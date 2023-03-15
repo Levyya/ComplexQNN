@@ -24,7 +24,6 @@ from allennlp.training import GradientDescentTrainer
 EMBEDDING_DIM = 128
 HIDDEN_DIM = 128
 
-
 @Model.register("complex_text_classifier")
 class ComplexTextClassifier(Model):
 

@@ -1,7 +1,7 @@
 
-local batch_size = 64;
+local batch_size = 32;
 local cuda_device = 2;
-local num_epochs = 4;
+local num_epochs = 2;
 local seed = 42;
 
 local dropout = 0.2;
@@ -17,16 +17,16 @@ local SST5_val_path = './data/SST/Fine-Grained/sentiment-dev';
 
 local data_dir = './data/';
 local get_train_path(task_name='SST-2') = 
-  if task_name == 'SST' 
+  if task_name == 'SST-2' 
   then SST2_train_path
   else data_dir + task_name + '/' + task_name + '_train.txt';
 local get_val_path(task_name='SST-2') = 
-  if task_name == 'SST' 
+  if task_name == 'SST-2' 
   then SST2_val_path
   else data_dir + task_name + '/' + task_name + '_test.txt';
 
 // Please choose dataset with task_name! ['CR', 'MPQA', 'MR', 'SST-2', 'SUBJ', 'SST-5']
-local task_name = 'SST-5';
+local task_name = 'CR';
 local num_classes = if task_name == 'SST-5' then 5 else 2;
 
 local train_path = 

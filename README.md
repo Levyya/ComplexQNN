@@ -42,7 +42,7 @@ allennlp train config/elmo.jsonnet --include-package work -s ./result/sst2_emlo 
 ```
 
 
-### BERT
+### BERT or RoBERTa
 ```cmd
 allennlp train config/bert.jsonnet --include-package work -s ./result/subj_bert -f
 ```

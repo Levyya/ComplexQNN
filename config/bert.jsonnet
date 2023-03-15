@@ -9,7 +9,7 @@ local hidden_dim = 128;
 local dropout = 0.2;
 local lr = 0.00001;
 local output_dim = 128;
-local model_name = 'BERT';  // Option: ['RoBERTa', 'bert']
+local model_name = 'BERT';  // Option: ['RoBERTa', 'BERT']
 local ptm_name = 
   if model_name == 'RoBERTa'
   then 'roberta-base'
@@ -22,16 +22,16 @@ local SST5_val_path = './data/SST/Fine-Grained/sentiment-dev';
 
 local data_dir = './data/';
 local get_train_path(task_name='SST-2') = 
-  if task_name == 'SST' 
+  if task_name == 'SST-2' 
   then SST2_train_path
   else data_dir + task_name + '/' + task_name + '_train.txt';
 local get_val_path(task_name='SST-2') = 
-  if task_name == 'SST' 
+  if task_name == 'SST-2' 
   then SST2_val_path
   else data_dir + task_name + '/' + task_name + '_test.txt';
 
 // Please choose dataset with task_name! ['CR', 'MPQA', 'MR', 'SST-2', 'SUBJ', 'SST-5']
-local task_name = 'MR';
+local task_name = 'SUBJ';
 local num_classes = if task_name == 'SST-5' then 5 else 2;
 
 local train_path = 

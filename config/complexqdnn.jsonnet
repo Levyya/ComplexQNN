@@ -1,15 +1,15 @@
 
-local batch_size = 32;
+local batch_size = 16;
 local cuda_device = 2;
 local num_epochs = 2;
 local seed = 42;
 
 local embedding_dim = 768;
-local hidden_dim = 128;
+local output_dim = 128;
 local dropout = 0.2;
 local lr = 0.00003;
 local output_dim = 128;
-local model_name = 'BERT';
+local model_name = 'RoBERTa';
 local ptm_name = 
   if model_name == 'RoBERTa'
   then 'roberta-base'
@@ -22,16 +22,16 @@ local SST5_val_path = './data/SST/Fine-Grained/sentiment-dev';
 
 local data_dir = './data/';
 local get_train_path(task_name='SST-2') = 
-  if task_name == 'SST' 
+  if task_name == 'SST-2' 
   then SST2_train_path
   else data_dir + task_name + '/' + task_name + '_train.txt';
 local get_val_path(task_name='SST-2') = 
-  if task_name == 'SST' 
+  if task_name == 'SST-2' 
   then SST2_val_path
   else data_dir + task_name + '/' + task_name + '_test.txt';
 
 // Please choose dataset with task_name! ['CR', 'MPQA', 'MR', 'SST-2', 'SUBJ', 'SST-5']
-local task_name = 'SST-5';
+local task_name = 'CR';
 local num_classes = if task_name == 'SST-5' then 5 else 2;
 
 local train_path = 
@@ -87,6 +87,7 @@ local val_path =
     encoder: {
       type: 'complexqnn',
       embedding_dim: embedding_dim,
+      output_dim: output_dim
     },
     pooler: {
       type: 'bert_pooler',
