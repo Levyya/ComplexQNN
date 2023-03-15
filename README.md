@@ -60,7 +60,7 @@ allennlp train config/complexqdnn.jsonnet --include-package work -s ./result/sub
 ```
 
 ## Dataset
-Please modify the variable "task_name" in model.jsonnet to change diffferent datasets.
+Please modify the variable "task_name" in model.jsonnet to change different datasets.
 
 ## Other command
 ```cmd
