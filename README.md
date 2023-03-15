@@ -1,6 +1,6 @@
 # ComplexQNN
 
-The ComplexQNN is a complex-valued quantum-inspired neural network for NLP downstreaming tasks.
+The ComplexQNN is a quantum-inspired complex-valued neural network for NLP tasks.
 
 **Dependencies**
 
@@ -12,22 +12,22 @@ The ComplexQNN is a complex-valued quantum-inspired neural network for NLP downs
 ## Allennlp train command example
 
 ```cmd
-allennlp train config/text_classifier_cnn.jsonnet --include-package myclassifier -s ./result/mytrain2 -f --dry-run
+allennlp train config/complexqnn.jsonnet --include-package work -s ./result/mytrain2 -f --dry-run
 ```
 
 
 ## Some notes about allennlp
-1. --dry-run  # load dataset and not train
-2. -f  # force trian, this command will override the save path
+1. --dry-run  # load dataset but do not train the model
+2. -f  # force training, this command will override the save path
 3. -s  # save path
-4. --include-package  # personal work path including model, classifier and so on
+4. --include-package $path  # personal work path including model, classifier and so on
 5. config/xxx.jsonnet  # config file with jsonnet format
 
 
 ## Our train command
 ### CNN
 ```
-allennlp train config/text_classifier_cnn.jsonnet --include-package myclassifier -s ./result/mytrain2 -f
+allennlp train config/cnn.jsonnet --include-package work -s ./result/cr_cnn -f --dry-run
 ```
 
 
@@ -35,25 +35,25 @@ allennlp train config/text_classifier_cnn.jsonnet --include-package myclassifier
 ### ELMo
 
 ```cmd
-allennlp train config/text_classifier_elmo.jsonnet --include-package myclassifier -s ./result/sst_emlo -f
+allennlp train config/elmo.jsonnet --include-package work -s ./result/sst2_emlo -f
 ```
 
 
 ### BERT
 ```cmd
-allennlp train config/text_classifier_bert.jsonnet --include-package myclassifier -s ./result/subj_bert -f
+allennlp train config/bert.jsonnet --include-package work -s ./result/subj_bert -f
 ```
 
 
 ### ComplexTextCNN
 ```cmd
-allennlp train config/text_classifier_complexcnn.jsonnet --include-package myclassifier -s ./result/cr_complexcnn -f
+allennlp train config/complexcnn.jsonnet --include-package work -s ./result/cr_complexcnn -f
 ```
 
 
 ### ComplexQNN
 ```cmd
-allennlp train config/complexqdnn.jsonnet --include-package work -s ./result/subj_complexqnn -f --dry-run
+allennlp train config/complexqdnn.jsonnet --include-package work -s ./result/subj_complexqnn -f
 ```
 
 
