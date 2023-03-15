@@ -3,6 +3,7 @@ from typing import Dict
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 import torch.optim as optim
 from allennlp.data import TextFieldTensors
 from allennlp.data.data_loaders import MultiProcessDataLoader
@@ -31,17 +32,23 @@ class ComplexTextClassifier(Model):
                  embedder_real: TextFieldEmbedder,
                  embedder_imag: TextFieldEmbedder,
                  encoder: Seq2VecEncoder,
+                 pooler: Seq2VecEncoder,
                  vocab: Vocabulary,
+                 num_classes: int = 5,
                  positive_label: str = '1') -> None:
         super().__init__(vocab)
         self.embedder_real = embedder_real
         self.embedder_imag = embedder_imag
         self.encoder = encoder
-        self.linear = torch.nn.Linear(in_features=encoder.get_output_dim(),
-                                      out_features=vocab.get_vocab_size('label'))
+        self.pooler = pooler
+        self.num_classes = num_classes
+        self.linear = torch.nn.Linear(in_features=encoder.get_output_dim() + pooler.get_output_dim(),
+                                      out_features=self.num_classes)
         positive_index = vocab.get_token_index(positive_label, namespace='label')
-        self.accuracy = CategoricalAccuracy()
-        self.f1_measure = F1Measure(positive_index)
+        # self.accuracy = CategoricalAccuracy()
+        # self.f1_measure = F1Measure(positive_index)
+        self.bool_acc = BooleanAccuracy()
+        self.f1_multi = FBetaMultiLabelMeasure(average='macro')
         self.loss_function = torch.nn.CrossEntropyLoss()
 
     def forward(self,
@@ -53,20 +60,37 @@ class ComplexTextClassifier(Model):
         embeddings_imag = self.embedder_imag(tokens)
         embeddings = embeddings_real + 1j * embeddings_imag
         encoder_out = self.encoder(embeddings, mask)
-        logits = self.linear(encoder_out)
-
+        pooler_out = self.pooler(embeddings_real, mask)
+        # logits = self.linear(encoder_out)
+        logits = self.linear(torch.cat([encoder_out, pooler_out], dim=-1))
         probs = torch.softmax(logits, dim=-1)
         output = {"logits": logits, "cls_emb": encoder_out, "probs": probs}
+        preds = torch.argmax(logits, dim=-1)
+        
         if label is not None:
-            self.accuracy(logits, label)
-            self.f1_measure(logits, label)
+            self.bool_acc(preds, label)
+            one_hot_preds = F.one_hot(preds, self.num_classes)
+            one_hot_labels = F.one_hot(label, self.num_classes)
+            try:
+                self.f1_multi(one_hot_preds, one_hot_labels)
+            except:
+                print(preds)
+                print(label)
+                self.f1_multi(one_hot_preds, one_hot_labels)
+                a = 1/ 0
+            # self.accuracy(logits, label)
+            # self.f1_measure(logits, label)
             output["loss"] = self.loss_function(logits, label)
 
         return output
 
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
-        return {'accuracy': self.accuracy.get_metric(reset),
-                **self.f1_measure.get_metric(reset)}
+        return {
+                # 'accuracy': self.accuracy.get_metric(reset),
+                # **self.f1_measure.get_metric(reset)
+                'bool_accuracy': self.bool_acc.get_metric(reset),
+                **self.f1_multi.get_metric(reset)
+                }
 
 
 # Model in AllenNLP represents a model that is trained.
@@ -88,7 +112,7 @@ class TextClassifier(Model):
         # After converting a sequence of vectors to a single vector, we feed it into
         # a fully-connected linear layer to reduce the dimension to the total number of labels.
         self.linear = torch.nn.Linear(in_features=encoder.get_output_dim(),
-                                      out_features=num_classes)
+                                      out_features=self.num_classes)
         # print(vocab.get_vocab_size('label'))
         # print("\n\n\n\n")
 
@@ -117,12 +141,6 @@ class TextClassifier(Model):
         # print(tokens)
         mask = get_text_field_mask(tokens)
 
-        # Forward pass
-        # print(tokens)
-        # print(label)
-        # print(self.embedder)
-        # print(tokens.keys())
-        # print(self.embedder._token_embedders.keys())
         embeddings = self.embedder(tokens)
         encoder_out = self.encoder(embeddings, mask)
         logits = self.linear(encoder_out)
@@ -134,23 +152,16 @@ class TextClassifier(Model):
         # print(logits.shape)
         # print(logits)
         preds = torch.argmax(logits, dim=-1)
-        # print(preds.shape)
-        # print(preds)
-        # print(preds.shape)
-        # print(preds)
-        # print(label)
-        # print(label.shape)
         if label is not None:
             # self.accuracy(logits, label)
             # self.f1_measure(logits, label)
             self.bool_acc(preds, label)
+            one_hot_preds = F.one_hot(preds, self.num_classes)
             try:
-                # self.bool_acc(preds, label)
-                self.f1_multi(preds, label)
+                self.f1_multi(one_hot_preds, label)
             except:
                 print(preds)
                 print(label)
-                # self.f1_multi(preds, label)
                 
             # self.f1_beta(logits, label)
             output["loss"] = self.loss_function(logits, label)
@@ -167,60 +178,3 @@ class TextClassifier(Model):
                 **self.f1_multi.get_metric(reset)
                 # **self.f1_beta.get_metric(reset)
                }
-
-# def main():
-#     reader = StanfordSentimentTreeBankDatasetReader()
-#     train_path = 'https://s3.amazonaws.com/realworldnlpbook/data/stanfordSentimentTreebank/trees/train.txt'
-#     dev_path = 'https://s3.amazonaws.com/realworldnlpbook/data/stanfordSentimentTreebank/trees/dev.txt'
-
-#     sampler = BucketBatchSampler(batch_size=32, sorting_keys=["tokens"])
-#     train_data_loader = MultiProcessDataLoader(reader, train_path, batch_sampler=sampler)
-#     dev_data_loader = MultiProcessDataLoader(reader, dev_path, batch_sampler=sampler)
-
-#     # You can optionally specify the minimum count of tokens/labels.
-#     # `min_count={'tokens':3}` here means that any tokens that appear less than three times
-#     # will be ignored and not included in the vocabulary.
-#     vocab = Vocabulary.from_instances(chain(train_data_loader.iter_instances(), dev_data_loader.iter_instances()),
-#                                       min_count={'tokens': 3})
-#     train_data_loader.index_with(vocab)
-#     dev_data_loader.index_with(vocab)
-
-#     token_embedding = Embedding(num_embeddings=vocab.get_vocab_size('tokens'),
-#                                 embedding_dim=EMBEDDING_DIM)
-
-#     # BasicTextFieldEmbedder takes a dict - we need an embedding just for tokens,
-#     # not for labels, which are used as-is as the "answer" of the sentence classification
-#     word_embeddings = BasicTextFieldEmbedder({"tokens": token_embedding})
-
-#     # Seq2VecEncoder is a neural network abstraction that takes a sequence of something
-#     # (usually a sequence of embedded word vectors), processes it, and returns a single
-#     # vector. Oftentimes this is an RNN-based architecture (e.g., LSTM or GRU), but
-#     # AllenNLP also supports CNNs and other simple architectures (for example,
-#     # just averaging over the input vectors).
-#     encoder = PytorchSeq2VecWrapper(
-#         torch.nn.LSTM(EMBEDDING_DIM, HIDDEN_DIM, batch_first=True))
-
-#     model = LstmClassifier(word_embeddings, encoder, vocab)
-
-#     optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
-
-#     trainer = GradientDescentTrainer(
-#         model=model,
-#         optimizer=optimizer,
-#         data_loader=train_data_loader,
-#         validation_data_loader=dev_data_loader,
-#         patience=10,
-#         num_epochs=20,
-#         cuda_device=-1)
-
-#     trainer.train()
-
-#     # predictor = SentenceClassifierPredictor(model, dataset_reader=reader)
-#     logits = predictor.predict('This is the best movie ever!')['logits']
-#     label_id = np.argmax(logits)
-
-#     print(model.vocab.get_token_from_index(label_id, 'labels'))
-
-
-# if __name__ == '__main__':
-#     main()

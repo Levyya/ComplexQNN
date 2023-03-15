@@ -268,11 +268,13 @@ class ComplexQNNSeq2Vec(Seq2VecEncoder):
         super().__init__()
         self._embedding_dim = embedding_dim
         self._activation = ComplexReLU()
-        self.gru = nn.GRU(self._embedding_dim, self._embedding_dim, 2)
+        # self.gru = nn.GRU(self._embedding_dim, self._embedding_dim, 2)
         projector_real = nn.init.uniform_(torch.nn.Parameter(torch.Tensor(self._embedding_dim, 1), requires_grad=False)).to(device)
         projector_imag = nn.init.uniform_(torch.nn.Parameter(torch.Tensor(self._embedding_dim, 1), requires_grad=False)).to(device)
         projector = projector_real + 1j * projector_imag
         self.projector = projector
+        self.cf1 = ComplexLinear(self._embedding_dim, self._embedding_dim)
+        self.cf2 = ComplexLinear(self._embedding_dim, self._embedding_dim)
         if output_dim:
             self.projection_layer = ComplexLinear(self._embedding_dim, output_dim)
             self._output_dim = output_dim
@@ -285,6 +287,21 @@ class ComplexQNNSeq2Vec(Seq2VecEncoder):
 
     def get_output_dim(self) -> int:
         return self._output_dim
+    
+    def simple_measure(self, x: torch.Tensor):
+        # x [batch, seq_len, emb_dim]
+        pooler = torch.mean(x, dim=-2)  # [batch, emb_dim]
+        return pooler.real
+    
+    def measure(self, x: torch.Tensor):
+        # TODO: quantum measure
+        # P = self.projector @ self.projector.permute(1, 0)
+        # result = torch.cat([
+        #     torch.diag(P @ batch).abs().unsqueeze(0)
+        #     for batch in V
+        # ]).to(tokens.device)
+        # return result
+        return x.real
 
     def forward(self, tokens: torch.Tensor, mask: torch.BoolTensor):
         if mask is not None:
@@ -293,24 +310,31 @@ class ComplexQNNSeq2Vec(Seq2VecEncoder):
             # If mask doesn't exist create one of shape (batch_size, num_tokens)
             mask = torch.ones(tokens.shape[0], tokens.shape[1], device=tokens.device).bool()
         # tokens = tokens.unsqueeze(1).type(torch.complex64)
-        imag_tokens = torch.randn_like(tokens)
-        tokens = tokens + 1j * imag_tokens
-        # Method1: Quantum-inspired model
+        if tokens.dtype != torch.complex64:
+            imag_tokens = torch.randn_like(tokens)
+            tokens = tokens + 1j * imag_tokens  
+        
+        ## tokens: {shape=[batch, seq_len, emb_dim], dtype=torch.complex64}
+        
+        # Method1: Quantum-inspired model (origin)
         # step1：得到密度矩阵：外积 + 求和
-        tokens = tokens.unsqueeze(-1)
-        V = torch.mean(tokens @ tokens.permute(0, 1, 3, 2), dim=1)
-        # step2: evolution
+        # tokens = tokens.unsqueeze(-1)
+        # V = torch.mean(tokens @ tokens.permute(0, 1, 3, 2), dim=1)
+        # # step2: evolution
         # V_r, _ = self.gru(V.real)
         # V_i, _ = self.gru(V.imag)
         # V = V_r + 1j * V_i
-        # print(V.shape)
-        # density_matrix: [batch_size, emb_dim, emb_dim]
-        # step3: 测量
-        P = self.projector @ self.projector.permute(1, 0)
-        # print(P.shape)
-        # print(V.shape)
-        result = torch.cat([
-            torch.diag(P @ batch).abs().unsqueeze(0)
-            for batch in V
-        ]).to(tokens.device)
+        # # density_matrix: [batch_size, emb_dim, emb_dim]
+        # # step3: 测量
+        # P = self.projector @ self.projector.permute(1, 0)
+        # result = torch.cat([
+        #     torch.diag(P @ batch).abs().unsqueeze(0)
+        #     for batch in V
+        # ]).to(tokens.device)
+        # return result
+        
+        # Method2: Quantum-inspired model (complexnn)
+        x = self.cf1(tokens)
+        # x = self.cf2(tokens)
+        result = self.simple_measure(x)
         return result

@@ -1,5 +1,5 @@
 
-local batch_size = 4;
+local batch_size = 32;
 local cuda_device = 2;
 local num_epochs = 2;
 local seed = 42;
@@ -13,34 +13,35 @@ local model_name = 'BERT';
 local ptm_name = 
   if model_name == 'RoBERTa'
   then 'roberta-base'
-  else 'distilbert-base-uncased';
-  
-local data_dir = '/workspace/Wei_lai/NLP/Mine_Project/NLP/Mine_Project/AllenNLP/Learning/Baseline_Allennlp/data/';
-local get_train_path(task_name='SST') = 
+  else 'bert-base-cased';
+
+local SST2_train_path = './data/SST/Binary/sentiment-train';
+local SST2_val_path = './data/SST/Binary/sentiment-dev';
+local SST5_train_path = './data/SST/Fine-Grained/sentiment-train';
+local SST5_val_path = './data/SST/Fine-Grained/sentiment-dev';
+
+local data_dir = './data/';
+local get_train_path(task_name='SST-2') = 
   if task_name == 'SST' 
-  then '/workspace/Wei_lai/NLP/data/SST/Binary/sentiment-train'
+  then SST2_train_path
   else data_dir + task_name + '/' + task_name + '_train.txt';
-local get_val_path(task_name='SST') = 
+local get_val_path(task_name='SST-2') = 
   if task_name == 'SST' 
-  then '/workspace/Wei_lai/NLP/data/SST/Binary/sentiment-dev'
+  then SST2_val_path
   else data_dir + task_name + '/' + task_name + '_test.txt';
 
-local SST2_train_path = '/workspace/Wei_lai/NLP/data/SST/Binary/sentiment-train';
-local SST2_dev_path = '/workspace/Wei_lai/NLP/data/SST/Binary/sentiment-dev';
-local SST5_train_path = '/workspace/Wei_lai/NLP/data/SST/Fine-Grained/sentiment-train';
-local SST5_dev_path = '/workspace/Wei_lai/NLP/data/SST/Fine-Grained/sentiment-dev';
+// Please choose dataset with task_name! ['CR', 'MPQA', 'MR', 'SST-2', 'SUBJ', 'SST-5']
+local task_name = 'SST-5';
+local num_classes = if task_name == 'SST-5' then 5 else 2;
 
-// 如果数据集为CR, MPQA, MR, SUBJ, 使用get_train_path
-/*
-local task_name = 'SUBJ';
-local train_path = get_train_path(task_name);
-local val_path = get_val_path(task_name);
-*/
-
-// 如果数据集为SST2，SST5，使用根变量引用
-// Note: 如果为多分类，要修改num_classes！
-local train_path = SST5_train_path;
-local val_path = SST5_dev_path;
+local train_path = 
+  if task_name == 'SST-5'
+  then SST5_train_path
+  else get_train_path(task_name);
+local val_path = 
+  if task_name == 'SST-5'
+  then SST5_val_path
+  else get_val_path(task_name);
 
 {
   numpy_seed: seed,
@@ -59,6 +60,7 @@ local val_path = SST5_dev_path;
         model_name: ptm_name
       },
     },
+    task_name: task_name,
   },
   datasets_for_vocab_creation: ['train'],
   train_data_path: train_path,
@@ -86,7 +88,11 @@ local val_path = SST5_dev_path;
       type: 'complexqnn',
       embedding_dim: embedding_dim,
     },
-    num_classes: 5
+    pooler: {
+      type: 'bert_pooler',
+      pretrained_model: ptm_name
+    },
+    num_classes: num_classes
   },
   data_loader: {
     shuffle: true,
