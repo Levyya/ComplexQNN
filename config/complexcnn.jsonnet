@@ -12,19 +12,33 @@ local num_filters = 256;
 local output_dim = 128;
 local ngram_filter_sizes = std.range(2, max_filter_size);
 
-local data_dir = '/workspace/Wei_lai/NLP/Mine_Project/NLP/Mine_Project/AllenNLP/Learning/Baseline_Allennlp/data/';
-local get_train_path(task_name='SST') = 
+local SST2_train_path = './data/SST/Binary/sentiment-train';
+local SST2_val_path = './data/SST/Binary/sentiment-dev';
+local SST5_train_path = './data/SST/Fine-Grained/sentiment-train';
+local SST5_val_path = './data/SST/Fine-Grained/sentiment-dev';
+
+local data_dir = './data/';
+local get_train_path(task_name='SST-2') = 
   if task_name == 'SST' 
-  then '/workspace/Wei_lai/NLP/data/SST/Binary/sentiment-train'
+  then SST2_train_path
   else data_dir + task_name + '/' + task_name + '_train.txt';
-local get_val_path(task_name='SST') = 
+local get_val_path(task_name='SST-2') = 
   if task_name == 'SST' 
-  then '/workspace/Wei_lai/NLP/data/SST/Binary/sentiment-dev'
+  then SST2_val_path
   else data_dir + task_name + '/' + task_name + '_test.txt';
-  
-local task_name = 'CR';
-local train_path = get_train_path(task_name);
-local val_path = get_val_path(task_name);
+
+// Please choose dataset with task_name! ['CR', 'MPQA', 'MR', 'SST-2', 'SUBJ', 'SST-5']
+local task_name = 'SST-5';
+local num_classes = if task_name == 'SST-5' then 5 else 2;
+
+local train_path = 
+  if task_name == 'SST-5'
+  then SST5_train_path
+  else get_train_path(task_name);
+local val_path = 
+  if task_name == 'SST-5'
+  then SST5_val_path
+  else get_val_path(task_name);
 
 {
   numpy_seed: seed,
@@ -42,6 +56,7 @@ local val_path = get_val_path(task_name);
         lowercase_tokens: true,
       },
     },
+    task_name: task_name,
   },
   datasets_for_vocab_creation: ['train'],
   train_data_path: train_path,
@@ -62,7 +77,8 @@ local val_path = get_val_path(task_name);
       ngram_filter_sizes: ngram_filter_sizes,
       num_filters: num_filters,
       output_dim: output_dim,
-    }
+    },
+    num_classes: num_classes
   },
   data_loader: {
     shuffle: true,
@@ -75,6 +91,6 @@ local val_path = get_val_path(task_name);
       lr: lr,
       type: 'adamw',
     },
-    validation_metric: '+f1',
+    validation_metric: '+fscore',
   },
 }

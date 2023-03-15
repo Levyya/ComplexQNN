@@ -180,8 +180,7 @@ class ComplexConvSeq2Vec(Seq2VecEncoder):
             for conv in self._convolution_layers
         ]
         # [[64, 100, 126], [64, 100, 125], [64, 100, 124]]
-        # maxpool_output = [mine_complex_max_pool2d(block.unsqueeze(-1), 1, block.shape[-1]).squeeze() for block in convs]
-        # maxpool
+        maxpool_output = [mine_complex_max_pool2d(block.unsqueeze(-1), 1, block.shape[-1]).squeeze() for block in convs]
         
         # [[64, 100] * 3]
         pool_out = torch.cat(maxpool_output, dim=1)

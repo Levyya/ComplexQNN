@@ -104,11 +104,9 @@ class TextClassifier(Model):
                  positive_label: str = '1') -> None:
         super().__init__(vocab)
         # We need the embeddings to convert word IDs to their vector representations
-        # print(embedder)
         self.embedder = embedder
-
         self.encoder = encoder
-
+        self.num_classes = num_classes
         # After converting a sequence of vectors to a single vector, we feed it into
         # a fully-connected linear layer to reduce the dimension to the total number of labels.
         self.linear = torch.nn.Linear(in_features=encoder.get_output_dim(),
@@ -118,12 +116,13 @@ class TextClassifier(Model):
 
         # Monitor the metrics - we use accuracy, as well as prec, rec, f1 for 4 (very positive)
         positive_index = vocab.get_token_index(positive_label, namespace='label')
-        self.accuracy = CategoricalAccuracy()
-        self.bool_acc = BooleanAccuracy()
-        self.f1_measure = F1Measure(positive_index)
+        # self.accuracy = CategoricalAccuracy()
+        # self.f1_measure = F1Measure(positive_index)
+        # self.f1_beta = FBetaMeasure(average='micro')
         # self.entropy = Entropy()
-        self.f1_multi = FBetaMultiLabelMeasure(average='micro')
-        self.f1_beta = FBetaMeasure(average='micro')
+        # self.f1_multi = FBetaMultiLabelMeasure(average='micro')
+        self.bool_acc = BooleanAccuracy()
+        self.f1_multi = FBetaMultiLabelMeasure(average='macro')
 
         # We use the cross entropy loss because this is a classification task.
         # Note that PyTorch's CrossEntropyLoss combines softmax and log likelihood loss,
@@ -155,13 +154,15 @@ class TextClassifier(Model):
         if label is not None:
             # self.accuracy(logits, label)
             # self.f1_measure(logits, label)
-            self.bool_acc(preds, label)
             one_hot_preds = F.one_hot(preds, self.num_classes)
+            one_hot_labels = F.one_hot(label, self.num_classes)
             try:
-                self.f1_multi(one_hot_preds, label)
+                self.f1_multi(one_hot_preds, one_hot_labels)
+                self.bool_acc(preds, label)
             except:
                 print(preds)
                 print(label)
+                a = 1 / 0
                 
             # self.f1_beta(logits, label)
             output["loss"] = self.loss_function(logits, label)

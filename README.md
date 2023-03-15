@@ -30,7 +30,10 @@ allennlp train config/complexqnn.jsonnet --include-package work -s ./result/mytr
 allennlp train config/cnn.jsonnet --include-package work -s ./result/cr_cnn -f --dry-run
 ```
 
-
+### GRU
+```
+allennlp train config/gru.jsonnet --include-package work -s ./result/mpqa_gru -f --dry-run
+```
 
 ### ELMo
 
